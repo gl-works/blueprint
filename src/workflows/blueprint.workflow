@@ -25,8 +25,8 @@ Task category choices used in this workflow:
 
 <terminology>
 - TOPIC: User-provided blueprint name (e.g., "core-routing", "oauth-auth")
-- BLUEPRINT_DIR: `blueprint/<TOPIC>/` relative to project root
-- REVIEWS_DIR: `blueprint/<TOPIC>/reviews/`
+- BLUEPRINT_DIR: `.blueprint/<TOPIC>/` relative to project root
+- REVIEWS_DIR: `.blueprint/<TOPIC>/reviews/`
 - design.md: Input design document (in project root or specified path)
 - .session.md: Session state file tracking current progress
 - .meta.json: Blueprint metadata (scope, decisions, timestamps)
@@ -37,8 +37,8 @@ Task category choices used in this workflow:
 These are non-negotiable. Violation = workflow failure.
 
 IRON LAW #1: NO NEW CODE BEFORE BLUEPRINT COMPLETE (.gate-passed created)
-IRON LAW #2: NO NEW TYPE FOR THIS FEATURE OUTSIDE blueprint/<topic>/types.md
-IRON LAW #3: NO NEW INTERFACE WITHOUT blueprint/<topic>/contracts.md SPEC
+IRON LAW #2: NO NEW TYPE FOR THIS FEATURE OUTSIDE .blueprint/<topic>/types.md
+IRON LAW #3: NO NEW INTERFACE WITHOUT .blueprint/<topic>/contracts.md SPEC
 IRON LAW #4: NO COMPLETION CLAIM WITHOUT FRESH VERIFICATION EVIDENCE
 IRON LAW #5: NO PRODUCTION CODE WITHOUT A FAILING TEST FIRST
 IRON LAW #6: NO TEST MODIFIED TO PASS. ONLY CODE OR BLUEPRINT.
@@ -61,10 +61,10 @@ Validate `$FROM_STAGE` must be 1-4 if provided.
 
 **Auto-detect `$TOPIC`:**
 
-A. If `--from-stage` is set and exactly one subdirectory exists under `blueprint/`:
+A. If `--from-stage` is set and exactly one subdirectory exists under `.blueprint/`:
    → `$TOPIC` = that directory name (resuming existing blueprint)
 
-B. If `--from-stage` is set and multiple subdirectories under `blueprint/`:
+B. If `--from-stage` is set and multiple subdirectories under `.blueprint/`:
    → Prompt: "Multiple blueprints found. Which one to resume?"
    ```
    question(
@@ -99,8 +99,8 @@ Show banner:
 ### Step 1: Find or create blueprint directory
 
 ```
-BLUEPRINT_DIR = "blueprint/$TOPIC/"
-REVIEWS_DIR   = "blueprint/$TOPIC/reviews/"
+BLUEPRINT_DIR = ".blueprint/$TOPIC/"
+REVIEWS_DIR   = ".blueprint/$TOPIC/reviews/"
 ```
 
 Check if `BLUEPRINT_DIR` already exists:
@@ -117,7 +117,7 @@ If `.session.md` does not exist (fresh start), write:
 
 ## Active Blueprint
 - name: $TOPIC
-- path: blueprint/$TOPIC/
+- path: .blueprint/$TOPIC/
 - scope: (to be determined in Phase B)
 
 ## Progress
@@ -133,7 +133,7 @@ If `.session.md` does not exist (fresh start), write:
 Search order (first match wins):
 1. `design.md` in project root
 2. `$TOPIC.md` in project root
-3. `blueprint/$TOPIC/design.md` (if resuming)
+3. `.blueprint/$TOPIC/design.md` (if resuming)
 4. Prompt user: "Where is your design document? Provide path or paste content."
 
 If nothing found: show error "Blueprint requires a design document (design.md) as input. Write one first, then run /blueprint."
@@ -168,7 +168,7 @@ If the project has existing source code:
 
 If no existing code (greenfield): skip, report "Greenfield project — no code to analyze."
 
-If previous blueprints exist in `blueprint/`:
+If previous blueprints exist in `.blueprint/`:
 1. List all subdirectories
 2. Read each `design.md` for scope understanding
 3. Check for entity/interface conflicts with current design
@@ -188,17 +188,28 @@ Check `design.md` against this checklist. Each item: YES/NO/PARTIAL.
 - ☐ Each module has clear input/output?
 - ☐ Module dependency relationships clear?
 
-**Constraint check:**
-- ☐ Tech stack determined (language, framework, database)?
-- ☐ Deployment target determined (local/SaaS/self-hosted)?
-- ☐ Performance requirements clear (latency, throughput)?
-- ☐ Security constraints mentioned (auth, encryption)?
+**Constraint check — tech & language:**
+- ☐ Primary programming language(s) confirmed? (single vs polyglot — affects types.md syntax, testing framework, lint rules)
+- ☐ Framework / runtime / database chosen?
+- ☐ Deployment persona determined? (personal CLI tool / team service / enterprise production system — calibrates architecture and security review)
+- ☐ Target user identified? (developer tool / end-user app / API library — affects error message language, UX patterns, logging)
+- ☐ Performance requirements clear? (latency, throughput — or "no explicit targets, low-overhead passthrough")
+
+**Constraint check — deployment & security:**
+- ☐ Deployment target determined? (local / SaaS / self-hosted / embedded)
+- ☐ Security constraints mentioned? (auth, encryption, credential storage)
+- ☐ Platform constraints? (Linux/Win/Mac, ARM/x86, container, minimal memory)
 
 **Invariant check:**
 - ☐ At least 3 design invariants?
 - ☐ Each invariant mechanically verifiable?
 - ☐ Has invariant declaring what NOT to do (scope boundary)?
 - ☐ Any "reverse" invariants? (e.g., "no new dependencies")
+
+**Alternatives check:** (Rule 2: State Rejected Alternatives)
+- ☐ For each design choice where ≥2 reasonable approaches exist, are rejected alternatives stated with reasoning?
+- ☐ If alternatives are missing, can you identify at least one design choice where the decision wasn't obvious?
+- ☐ Any "obvious choice" that might actually have a viable alternative worth documenting?
 
 **Ambiguity check:**
 - ☐ Any descriptions interpretable two ways?
@@ -213,36 +224,51 @@ For each pair (Ix, Iy), check if both can be true simultaneously.
 - No conflict → silent pass
 ```
 
-### B5: Gap-filling questions
+### B5: Adaptive gap discussion
 
-Based on NO/PARTIAL results, identify P0 gaps (entity, module, constraint, invariant).
-P1 gaps = ambiguity.
+Based on NO/PARTIAL checklist results, you have a list of gaps (P0 = entity/module/constraint/invariant; P1 = ambiguity).
 
-Ask questions ONE AT A TIME, max 5 rounds. Each question:
-1. Present gap: "I noticed [item] is [missing/incomplete]."
-2. Offer 2-3 concrete options.
-3. Wait for user response.
+Discuss these gaps with the user as a natural conversation — not a rigid Q&A. The goal is to turn each gap into a concrete decision, not to rush through a fixed number of questions.
 
-Example:
+**How to conduct the discussion:**
+
+1. **Open with context.** Briefly summarize what you found: "I reviewed your design. A few areas could use clarification: [list P0 gaps briefly, 1 sentence each]. Let's go through them."
+
+2. **Discuss each gap naturally.** Explain what's missing and why it matters. The user can ask questions, explore tradeoffs, or make a choice. They don't need to pick from a preset list — accommodate their preferred level of detail.
+
+3. **Distill into decisions.** After each gap is discussed, summarize the outcome and record it in `$GAP_DECISIONS`. If the user gave an open-ended answer, reformulate it: "So to confirm, you prefer [interpretation]. Correct?" If the user doesn't have a strong opinion, propose a reasonable default and confirm.
+
+4. **Keep discussion focused.** If the user asks a technical question (e.g., "what's the tradeoff?"), answer briefly (1-2 sentences) and steer back: "In short, [answer]. Does that help you decide, or would you like to defer this and move on?"
+
+5. **Check off the list.** After each gap is resolved (decision recorded or deferred), mentally check it off. Continue until all P0 gaps are addressed or the user signals readiness.
+
+**Ending the discussion:**
+
+No hard round limit. But you are responsible for not dragging. End when ANY of:
+
+- All P0 gaps have a decision recorded
+- User explicitly says they want to proceed ("let's move on", "looks good", "enough")
+- You've discussed all gaps and the user has nothing further to add
+- A single gap takes more than 2 rounds without resolution → mark it DEFERRED, move on
+
+**Final confirmation (not optional):**
+
 ```
 question(
-  header: "Error handling strategy",
-  question: "You didn't specify error handling for network failures. How should the system handle them?",
+  header: "Ready for Phase C?",
+  question: "I've gone through the design gaps. Current invariants: [list 2-3 key ones]. Shall I start the automated blueprint generation, or is there something else you'd like to discuss?",
   options: [
-    { label: "Auto-retry (3x, backoff)", description: "Exponential backoff, max 3 attempts" },
-    { label: "Fail fast", description: "Return error immediately, let caller decide" },
-    { label: "Caller decides", description: "Configurable retry policy per call site" }
+    { label: "Start Phase C", description: "Automated design + reviews" },
+    { label: "One more thing", description: "I have something else to clarify" }
   ]
 )
 ```
 
-After each answer, update `$GAP_DECISIONS` list.
-
-After 5 rounds, any remaining P0 → escalate: "Unresolved P0 gaps. Recommended to address first. Continue anyway?"
+If user picks "One more thing", handle it naturally, then re-confirm.
 
 ### B6: Finalize design.md
 
-Write `blueprint/$TOPIC/design.md` — combine the design content (already in your context from Step 3) with the appended sections below.
+Write `.blueprint/$TOPIC/design.md` — combine the design content (already in your context from Step 3) with the appended sections below.
 
 MANDATORY: Do NOT use the `read` tool to re-read the source design.md. The content is already in your context — use it directly.
 
@@ -348,7 +374,7 @@ task(
 TASK: Produce types.md — all core data types for the $TOPIC feature in one file.
 
 INPUT (design.md):
---- content of blueprint/$TOPIC/design.md ---
+--- content of .blueprint/$TOPIC/design.md ---
 
 INVARIANTS:
 --- confirmed invariant list ---
@@ -370,14 +396,14 @@ SELF-REVIEW:
 - Every entity covered?
 - Any types that could be shared/merged?
 
-OUTPUT: blueprint/$TOPIC/types.md
+OUTPUT: .blueprint/$TOPIC/types.md
 
 AUTO-VERIFICATION: No duplicate type definitions. Every referenced type exists.
 "
 )
 ```
 
-Wait for result. Verify `blueprint/$TOPIC/types.md` exists and has content.
+Wait for result. Verify `.blueprint/$TOPIC/types.md` exists and has content.
 
 **Step 1.3: Stage gate**
 Self-review (match entities). Auto-verify: no duplicate types in file.
@@ -397,7 +423,7 @@ task(
   prompt="
 TASK: From types.md, reverse-infer boundary conditions. Write as checkbox list with P0/P1/P2.
 
-INPUT: Read blueprint/$TOPIC/types.md
+INPUT: Read .blueprint/$TOPIC/types.md
 
 FORMAT (test-properties.md):
 # Test Properties — $TOPIC
@@ -418,7 +444,7 @@ EXAMPLE:
 - [ ] P1: source_lang 'auto' → trigger auto-detection
 - [ ] P2: concurrent calls — no field-level races
 
-OUTPUT: blueprint/$TOPIC/test-properties.md
+OUTPUT: .blueprint/$TOPIC/test-properties.md
 "
 )
 ```
@@ -429,7 +455,7 @@ OUTPUT: blueprint/$TOPIC/test-properties.md
 **Category:** `deep`
 
 **Step 2.0: Dependency check**
-If `blueprint/$TOPIC/types.md` missing → abort: "Stage 2 depends on Stage 1."
+If `.blueprint/$TOPIC/types.md` missing → abort: "Stage 2 depends on Stage 1."
 
 **Step 2.1: Invariant feasibility check**
 
@@ -443,8 +469,8 @@ task(
   prompt="
 TASK: Define module boundaries and interface signatures for the $TOPIC feature.
 
-INPUT: Read design.md from blueprint/$TOPIC/design.md
-TYPES: Read blueprint/$TOPIC/types.md
+INPUT: Read design.md from .blueprint/$TOPIC/design.md
+TYPES: Read .blueprint/$TOPIC/types.md
 INVARIANTS: from design.md Invariant List
 
 REQUIREMENTS:
@@ -462,7 +488,7 @@ SELF-REVIEW:
 
 AUTO-VERIFICATION: All types in signatures exist in types.md. No circular refs.
 
-OUTPUT: blueprint/$TOPIC/contracts.md
+OUTPUT: .blueprint/$TOPIC/contracts.md
 "
 )
 ```
@@ -497,7 +523,7 @@ task(
   prompt="
 TASK: Draw core data flow for $TOPIC, including ALL branch points.
 
-INPUT: Read design.md, contracts.md, types.md from blueprint/$TOPIC/
+INPUT: Read design.md, contracts.md, types.md from .blueprint/$TOPIC/
 
 REQUIREMENTS:
 1. Flow from entry point to all terminal states.
@@ -522,7 +548,7 @@ SELF-REVIEW:
 
 AUTO-VERIFICATION: Every branch point should have corresponding error rule (checked in Stage 4).
 
-OUTPUT: blueprint/$TOPIC/lifecycle.md
+OUTPUT: .blueprint/$TOPIC/lifecycle.md
 "
 )
 ```
@@ -547,7 +573,7 @@ task(
   prompt="
 TASK: From lifecycle.md, enumerate ALL branch paths as test coverage checklist.
 
-INPUT: Read blueprint/$TOPIC/lifecycle.md
+INPUT: Read .blueprint/$TOPIC/lifecycle.md
 
 FORMAT (test-coverage.md):
 # Test Coverage — $TOPIC
@@ -565,7 +591,7 @@ PRIORITY:
 - P1: Secondary flows + edge cases. Should pass.
 - P2: Unlikely scenarios. Nice to have.
 
-OUTPUT: blueprint/$TOPIC/test-coverage.md
+OUTPUT: .blueprint/$TOPIC/test-coverage.md
 "
 )
 ```
@@ -591,7 +617,7 @@ task(
   prompt="
 TASK: Define error types, propagation rules, retry policies, and user-facing messages.
 
-INPUT: Read lifecycle.md and types.md from blueprint/$TOPIC/
+INPUT: Read lifecycle.md and types.md from .blueprint/$TOPIC/
 
 REQUIREMENTS:
 1. Every error branch in lifecycle.md has a rule.
@@ -624,7 +650,7 @@ SELF-REVIEW:
 AUTO-VERIFICATION: Every error branch in lifecycle.md has matching rule in errors.md.
 Error types exist in types.md or existing codebase.
 
-OUTPUT: blueprint/$TOPIC/errors.md
+OUTPUT: .blueprint/$TOPIC/errors.md
 "
 )
 ```
@@ -661,7 +687,7 @@ task(
   prompt="
 You are reviewing a Blueprint design. DO NOT take their word. READ the artifacts.
 
-READ: blueprint/$TOPIC/types.md, blueprint/$TOPIC/errors.md
+READ: .blueprint/$TOPIC/types.md, .blueprint/$TOPIC/errors.md
 
 CHECK:
 1. Sensitive data exposure — secrets, tokens, PII in types?
@@ -670,8 +696,8 @@ CHECK:
 4. Auth/authorization — mentioned when it should be?
 
 OUTPUT TWO FILES:
-- Details: blueprint/$TOPIC/reviews/review-security.md (full reasoning)
-- Summary: blueprint/$TOPIC/reviews/review-security-summary.md
+- Details: .blueprint/$TOPIC/reviews/review-security.md (full reasoning)
+- Summary: .blueprint/$TOPIC/reviews/review-security-summary.md
   ## blocking: true/false
   ## severity: critical/major/minor
   ## affects_stage: 1/2/3/4
@@ -688,7 +714,7 @@ task(
   prompt="
 You are reviewing a Blueprint design. READ the artifacts.
 
-READ: blueprint/$TOPIC/contracts.md, blueprint/$TOPIC/lifecycle.md
+READ: .blueprint/$TOPIC/contracts.md, .blueprint/$TOPIC/lifecycle.md
 
 CHECK:
 1. Sync blocking in async paths?
@@ -708,7 +734,7 @@ task(
   prompt="
 You are reviewing a Blueprint design. READ the artifacts.
 
-READ: blueprint/$TOPIC/contracts.md, blueprint/$TOPIC/lifecycle.md
+READ: .blueprint/$TOPIC/contracts.md, .blueprint/$TOPIC/lifecycle.md
 
 CHECK:
 1. Circular dependencies?
@@ -728,7 +754,7 @@ task(
   prompt="
 You are reviewing a Blueprint design. READ the artifacts.
 
-READ: blueprint/$TOPIC/design.md, blueprint/$TOPIC/lifecycle.md
+READ: .blueprint/$TOPIC/design.md, .blueprint/$TOPIC/lifecycle.md
 
 CHECK:
 1. Requirements coverage — every scenario has a flow?
@@ -756,7 +782,7 @@ task(
   prompt="
 You are reviewing by roleplaying personas. READ all artifacts.
 
-READ from blueprint/$TOPIC/:
+READ from .blueprint/$TOPIC/:
 - types.md, contracts.md, lifecycle.md, errors.md
 - reviews/*-summary.md (batch 1)
 
@@ -775,7 +801,7 @@ task(
   load_skills=[],
   description="Consistency check for $TOPIC",
   prompt="
-MECHANICAL CROSS-FILE CHECK. Read ALL from blueprint/$TOPIC/.
+MECHANICAL CROSS-FILE CHECK. Read ALL from .blueprint/$TOPIC/.
 
 CHECKLIST:
 ☐ lifecycle.md references only types defined in types.md
@@ -786,7 +812,7 @@ CHECKLIST:
 
 For each FAIL: file, line, description.
 
-OUTPUT: blueprint/$TOPIC/reviews/review-consistency.md
+OUTPUT: .blueprint/$TOPIC/reviews/review-consistency.md
 "
 )
 ```
@@ -803,7 +829,7 @@ task(
   load_skills=[],
   description="Consolidate reviews for $TOPIC",
   prompt="
-You are the CONSOLIDATOR. Read ALL review summaries from blueprint/$TOPIC/reviews/*-summary.md.
+You are the CONSOLIDATOR. Read ALL review summaries from .blueprint/$TOPIC/reviews/*-summary.md.
 DO NOT read full review files — summaries only.
 
 CONFLICT RESOLUTION:
@@ -818,7 +844,7 @@ BLOCKING RULES (automatic):
 3. Circular dependency found → BLOCKING
 4. Two+ reviewers disagree → only BLOCKING if both flagged blocking
 
-OUTPUT: blueprint/$TOPIC/reviews/final-report.md
+OUTPUT: .blueprint/$TOPIC/reviews/final-report.md
 
 # Blueprint Final Report: $TOPIC
 
@@ -857,7 +883,7 @@ Invariant Disputes:
 Wait for consolidator result.
 
 **Create .gate-passed:**
-If final report status is "READY FOR CODING" → create `blueprint/$TOPIC/.gate-passed` (empty file).
+If final report status is "READY FOR CODING" → create `.blueprint/$TOPIC/.gate-passed` (empty file).
 If "BLOCKED" → do NOT create gate. Warn: "BLOCKED. Fix issues, re-run with --from-stage=4."
 
 **Display final summary:**
@@ -897,10 +923,16 @@ If "BLOCKED" → do NOT create gate. Warn: "BLOCKED. Fix issues, re-run with --f
 <!-- ============================================================ -->
 ## Phase D: Constraint Coding
 
+### Phase D Rules (apply throughout)
+
+**R4 — No Incremental Patching on Structural Changes:**
+When the core data structure layout or access pattern of a module changes (e.g. ring buffer → lookup table, shared state → per-instance), do NOT patch function-by-function. Rewrite the affected module from the new design and re-verify all invariants from scratch.
+This does NOT apply to additive changes that preserve existing structure (e.g. adding a field, adding a new function).
+
 ### D0: Pre-flight checks
 
 **Step D0.1: Verify .gate-passed**
-If `blueprint/$TOPIC/.gate-passed` does NOT exist → abort with "Gate not passed. Complete Phase C first or re-run with --design-only."
+If `.blueprint/$TOPIC/.gate-passed` does NOT exist → abort with "Gate not passed. Complete Phase C first or re-run with --design-only."
 
 **Step D0.2: Check test infrastructure (first time only)**
 Detect project testing:
@@ -909,7 +941,7 @@ Detect project testing:
 - No framework → install minimal test framework based on detected tech stack (Cargo.toml, package.json, requirements.txt, go.mod, etc.)
 
 **Step D0.3: Read blueprint artifacts**
-Read ALL from `blueprint/$TOPIC/`:
+Read ALL from `.blueprint/$TOPIC/`:
 - types.md → import types, never recreate
 - contracts.md → implement interfaces
 - errors.md → follow error rules
@@ -961,6 +993,7 @@ When ALL items for this module are checked:
 - ☐ No new failures in existing tests?
 - ☐ All new types from types.md (none invented)?
 - ☐ All edits traceable to requirements/blueprint?
+- ☐ **R3: Invariant enforcement verified** — Re-read each invariant from the design.md Invariant List. For each one, trace the exact code lines that enforce it. If any invariant is not enforced by the code, fix before passing gate.
 
 Pass → next module. Fail → continue TDD loop.
 
@@ -968,8 +1001,8 @@ Pass → next module. Fail → continue TDD loop.
 
 **故障 A: Test correct but fails (blueprint assumption wrong)**
 1. Do NOT modify test to make it pass.
-2. Update `blueprint/$TOPIC/types.md` (fix assumption).
-3. Update `blueprint/$TOPIC/test-properties.md` (fix boundary if needed).
+2. Update `.blueprint/$TOPIC/types.md` (fix assumption).
+3. Update `.blueprint/$TOPIC/test-properties.md` (fix boundary if needed).
 4. Commit with "blueprint-fix: $TOPIC: <description>".
 5. Continue RED→GREEN.
 
@@ -1010,7 +1043,7 @@ When all modules pass exit gates:
 
 <success_criteria>
 A blueprint run is successful when ALL of:
-1. `blueprint/<TOPIC>/` exists with all 6 artifact files + reviews + .meta.json
+1. `.blueprint/<TOPIC>/` exists with all 6 artifact files + reviews + .meta.json
 2. (If not design-only) All modules coded, tests pass, diagnostics clean
 3. (If not design-only) All P0 boundary conditions and coverage items checked
 4. No IRON LAW violations
@@ -1022,7 +1055,7 @@ If BLOCKED: final-report.md explains what's blocking. No .gate-passed.
 <session_recovery>
 If interrupted mid-workflow:
 
-1. Check `.session.md` in `blueprint/<TOPIC>/`.
+1. Check `.session.md` in `.blueprint/<TOPIC>/`.
 2. Read to determine last completed stage.
 3. Verify artifacts match state (Stage N done → artifact file must exist).
 4. Consistent → resume from next step.

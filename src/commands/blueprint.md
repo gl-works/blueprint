@@ -31,7 +31,7 @@ Blueprint enforces that every piece of code is preceded by:
 
 **Topic auto-detection** (in workflow): new run → prompt once; resume → scan existing blueprints.
 
-**Output:** `blueprint/<topic>/` directory with full artifacts + final report.
+**Output:** `.blueprint/<topic>/` directory with full artifacts + final report.
 </objective>
 
 <execution_context>
