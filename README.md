@@ -1,193 +1,97 @@
 # Blueprint
 
-**你说「做什么」，剩下的交给 Blueprint。**
+**You say WHAT. Blueprint handles HOW.**
 
-一个 OpenCode 命令，在你写代码之前自动完成类型定义、接口设计、数据流分析、错误协议设计、多视角审查——然后按设计约束编码。
+An OpenCode command that auto-generates types, interfaces, dataflow maps, and error contracts before you write a single line of code — then runs multi-LLM reviews and TDD-codes under those constraints.
 
-你只需要回答一个问题：**这个功能做什么？**
-
----
-
-## 核心问题
-
-给 LLM 一个任务，它能写出能跑的代码。但它不知道代码该怎么组织。
-
-你告诉它「做一个翻译工具」，它写出来了——但类型定义散落在三个文件里、模块接口各文件发明一套、网络超时被静默吞掉、流式返回写了一半代码但实际没有流式返回。这些不是 LLM 不够聪明，而是 **「做什么」和「代码怎么组织」之间有一层缺失的工程约束**。
-
-Blueprint 补的就是这个 gap：
-
-```
-你 →  描述功能（做什么）
-      ↓
-      Blueprint 自动完成类型、接口、数据流、错误协议
-      ↓
-      多 LLM 审查设计
-      ↓
-      按蓝图约束编码
-```
-
-你只负责「做什么」，剩下的全部自动。
+All you answer: **What does this feature do?**
 
 ---
 
-## 你做什么，Blueprint 做什么
+## WHAT vs HOW
 
-| 你（专注 WHAT） | Blueprint（自动处理 HOW） |
+| You (WHAT) | Blueprint (HOW) |
 |---|---|
-| 写一段 `design.md`，描述功能 | 提取核心实体，补全遗漏的边界条件 |
-| 提供技术栈和约束 | 定义所有类型，一个文件中定稿 |
-| 描述功能场景 | 画出完整数据流，每个分支点不遗漏 |
-| 告诉 agent 你的偏好 | 设计模块接口，确保不循环依赖 |
-| **合计：你花 5-10 分钟写需求** | 定义错误处理规则：什么重试、什么报错、用户看到什么 |
-| | 从类型推断测试边界条件，从数据流生成测试覆盖清单 |
-| | 7 个 LLM 从安全/性能/架构/业务/角色扮演视角审查设计 |
-| | 自动修复低级问题，升级决策性问题给你 |
-| | 通过后按蓝图 TDD 编码，通过模块出口门 |
-| | **合计：全自动运行，约 3-5 分钟完成设计 + 审查** |
+| Write a `design.md` describing your feature | Extracts entities, fills missing edge cases |
+| Provide tech stack and constraints | Defines all types in one file |
+| Describe functional scenarios | Maps every dataflow branch |
+| Tell the agent your preferences | Designs module interfaces, no circular deps |
+| **Your time: ~5–10 min** | Generates error handling rules: retry? abort? what user sees? |
+| | Infers test boundaries from types, coverage from dataflow |
+| | 7 LLMs review from security/perf/arch/business/roleplay angles |
+| | Auto-fixes L1 issues, escalates decisions to you |
+| | TDD-codes under blueprint constraints |
+| | **Total: fully automatic, ~3–5 min for design + review** |
 
 ---
 
-## 为什么这是个问题？
+## Before vs After
 
-传统 LLM 编码有两个结构性缺陷：
+```
+Without Blueprint:
+  You say WHAT → LLM free-styles → types scattered, interfaces inconsistent, errors silently swallowed
 
-**缺陷 1：规范只说了「做什么」，没说「代码怎么组织」**
-
-> 你告诉 LLM「做一个文章摘要工具」，LLM 会写代码。但它不知道：
-> - 错误应该统一处理还是就地抛出？
-> - 网络连接应该复用还是每次新建？
-> - 流式返回如果中断，是静默降级还是报错？
->
-> 结果是每个文件各自发明一套约定——不一致、不可维护。
-
-**缺陷 2：没有人在写代码之前审查设计**
-
-> 人类工程师写代码之前先画架构图、定义接口、写设计文档。LLM 直接写。
-> 后果是等到代码写完才发现：类型冲突、接口不一致、错误路径缺失。
-> 返工成本比先设计后编码高 10 倍。
-
-Blueprint 把这两个缺陷同时解决：在写代码之前，自动完成设计 + 多 LLM 审查。
+With Blueprint:
+  You say WHAT → auto design + review → code under constraints → consistent, complete, maintainable
+```
 
 ---
 
-## 三段式工作流
+## How It Works
 
 ```
-Phase A（你，5-10 分钟）     Phase B + C（自动，3-5 分钟）    Phase D（自动，按需）
-─────────────────          ──────────────────────          ─────────────────
-你写 design.md              /blueprint 触发                 按蓝图 TDD 编码
-说清楚做什么                 BP 质问补缺                      逐个模块通过出口门
-                            4 阶段自动设计
-                            7 个 LLM 并行审查
-                            输出 final report
+Phase A (you, ~5 min)     Phase B+C (auto, ~3–5 min)     Phase D (auto, on demand)
+───────────────────       ──────────────────────────      ─────────────────────────
+Write design.md           /blueprint kicks in             TDD code per blueprint
+Describe what it does     Fills gaps, asks questions      Types from types.md only
+                          4-stage auto design             Interfaces from contracts.md
+                          7 parallel LLM reviews          Errors from errors.md
+                          Outputs final report
 ```
 
-### Phase A：只回答「做什么」
+### Phase A — Just answer WHAT
+Write a free-form `design.md`. Core entities, module split, tech stack, scenarios. No format required.
 
-写一份 `design.md`，不需要格式模板。用你最舒服的方式描述：
+### Phase B — BP finds your blind spots
+`/blueprint` scans your design, spots gaps, and discusses with you naturally. Like talking to an engineer, not filling a form.
 
-- 有哪些核心实体/类型
-- 模块怎么划分
-- 技术栈和约束
-- 功能场景
+### Phase C — Fully automatic blueprint (3–5 min)
+4 sequential stages → `types.md` → `contracts.md` → `lifecycle.md` → `errors.md`, then 7 parallel LLM reviews (security, performance, architecture, business, roleplay, consistency, and a consolidated final report).
 
-就这么简单。不需要考虑类型怎么组织、接口怎么设计、错误怎么处理——那是 Blueprint 的事。
-
-### Phase B：BP 帮你查漏补缺（自适应讨论）
-
-`/blueprint` 后，agent 扫描你的 `design.md`，发现缺口就和你自然讨论。它不是按预设选项逐一提问，而是像和人聊设计一样：
-
-- **你可以回答、反问、或说"这块你们定"** — agent 负责把你的意思提炼为结构化决策
-- **没有硬性轮数上限** — 缺口填满了或你说"差不多了"就结束
-- **最后 agent 会总结并确认** — 确认后锁死设计不变量，后续全自动阶段不能违反
-
-### Phase C：全自动蓝图设计（3-5 分钟）
-
-四个阶段，依赖顺序执行：
-
-```
-Stage 1: 类型定稿     → types.md         ← 所有核心类型一次定稿
-Stage 2: 模块接口     → contracts.md     ← 模块边界和函数签名
-Stage 3: 数据流图     → lifecycle.md     ← 每个分支点都画出
-Stage 4: 错误协议     → errors.md        ← 错误类型 + 处理规则
-```
-
-每完成一个阶段自动触发测试分析：
-- 从类型定义生成边界条件清单
-- 从数据流图生成测试覆盖矩阵
-
-最后 **7 个 LLM 并行审查**：
-
-| 视角 | 检查 |
-|---|---|
-| 安全 | 敏感数据泄露？输入校验？信息泄漏？ |
-| 性能 | 阻塞调用？连接复用？大对象拷贝？ |
-| 架构 | 循环依赖？接口粒度？模块内聚？ |
-| 业务 | 需求覆盖？场景遗漏？错误消息可读？ |
-| 角色扮演 | 新手看得懂？运维能排查？用户有提示？ |
-| 一致性 | 跨文件引用正确？无孤儿定义？ |
-
-审查结果汇总到 `final-report.md`。通过后创建 `.gate-passed`（通关哨兵）。
-
-### Phase D：按蓝图约束编码
-
-`.gate-passed` 创建后，agent 按蓝图写代码。每个模块经过 TDD 循环：
-
-```
-RED     写测试 → 确认测试失败
-GREEN   最小实现 → 让测试通过
-REFACTOR  清理重复 → 测试仍然通过
-        → 模块出口门检查
-```
-
-**硬约束**（自动执行，不可绕过）：
-- 类型只能从 `types.md` 导入，不能自己发明
-- 接口只能按 `contracts.md` 实现
-- 错误处理只能按 `errors.md` 执行
-- 测试不过只能改代码或改蓝图，不能改测试
+### Phase D — Code under constraints
+TDD with hard gates: types only from `types.md`, interfaces only from `contracts.md`, errors only from `errors.md`. No bypass.
 
 ---
 
-## 一句话总结
-
-```
-没有 Blueprint：   你说做什么 → LLM 自由发挥 → 类型散落、接口冲突、错误缺失
-有 Blueprint：     你说做什么 → 自动设计 + 审查 → 按约束编码 → 一致、完整、可维护
-```
-
-你关心的是功能做什么。代码怎么组织，是 Blueprint 的事。
-
----
-
-## 安装
+## Quick Start
 
 ```bash
 cd blueprint/
 ./install.sh
 ```
 
-## 使用
-
 ```bash
-/blueprint                     # 全流程（设计 + 审查 + 编码）
-/blueprint --design-only       # 仅设计（不编码）
-/blueprint --from-stage 3      # 中断后恢复
+/blueprint                     # Full pipeline: design + review + code
+/blueprint --design-only       # Design only (no coding)
+/blueprint --from-stage 3      # Resume from interruption
 ```
 
-前提：项目根目录有 `design.md`。第一次运行时会问一次蓝图主题名（如 `core-routing`）。
+Prerequisites: a `design.md` in the project root.
 
-## 产出
+---
+
+## Output
 
 ```
 .blueprint/<topic>/
-├── design.md                ← 你的设计文档（BP 补充后）
-├── types.md                 ← 核心类型（所有类型一次定稿）
-├── contracts.md             ← 模块接口（边界清晰）
-├── lifecycle.md             ← 数据流图（分支完整）
-├── errors.md                ← 错误规则（无沉默错误）
-├── test-properties.md       ← 边界条件（P0/P1/P2）
-├── test-coverage.md         ← 覆盖矩阵（P0 必过）
-├── .gate-passed             ← 通关哨兵
+├── design.md              ← Your design (enriched by BP)
+├── types.md               ← All types, one file
+├── contracts.md           ← Module interfaces
+├── lifecycle.md           ← Dataflow with all branches
+├── errors.md              ← Error rules (no silent errors)
+├── test-properties.md     ← Boundary conditions (P0/P1/P2)
+├── test-coverage.md       ← Coverage matrix (P0 must pass)
+├── .gate-passed           ← Gate pass sentinel
 └── reviews/
     ├── review-security.md
     ├── review-perf.md
@@ -195,14 +99,20 @@ cd blueprint/
     ├── review-business.md
     ├── review-roleplay.md
     ├── review-consistency.md
-    └── final-report.md       ← 审查汇总
+    └── final-report.md    ← Review summary
 ```
 
-## 什么时候用？
+---
 
-| 适合 Blueprint | 不需要 |
+## When to Use
+
+| Good for Blueprint | Skip it |
 |---|---|
-| 新功能开发，涉及多个文件 | 改个变量名 |
-| 设计决策多，需要想清楚再写 | 修个拼写错误 |
-| 核心路径，上线后必须稳定 | 快速原型探索 |
-| 团队协作，需要设计文档留存 | 单行配置变更 |
+| Multi-file feature development | Renaming a variable |
+| Many design decisions to think through | Typo fix |
+| Critical path, needs stability | Quick prototype |
+| Team collaboration, needs design docs | One-line config change |
+
+---
+
+[中文版](README-cn.md)
