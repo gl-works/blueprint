@@ -95,6 +95,9 @@ Read ALL from `.blueprint/$TOPIC/`:
 - errors.md → follow error rules
 - test-properties.md → checkboxes to satisfy
 - test-coverage.md → checkboxes to satisfy
+- design.md → note the Invariant List. Some invariants are mechanically
+  checkable (ast_grep / glob / grep) and will be verified in the exit gate
+  (D1.6 R3a). Satisfy these during TDD, not at the exit gate.
 
 **Step D0.4: Identify modules to code**
 From contracts.md, list modules/interfaces. Order by dependency.
@@ -197,7 +200,21 @@ When ALL items for this module are checked:
 - ☐ **All edits traceable to requirements/blueprint** — no scope creep.
 - ☐ **Iron Law #5 compliance** — ast_grep confirms every new exported function is referenced in a test file.
 - ☐ **Compilation passes** — project builds without errors.
-- ☐ **R3: Invariant enforcement verified** — Re-read each invariant from the design.md Invariant List. For each one, trace the exact code lines that enforce it. If any invariant is not enforced by the code, fix before passing gate.
+- ☐ **R3a: Invariant — mechanical checks (run tools before self-review)**
+  For each invariant in the design.md Invariant List, determine if ast_grep,
+  glob, or grep can mechanically verify it. If yes, run the appropriate tool.
+  Examples (adapt to your project's invariants):
+    - Atomic write pattern:  ast_grep search for .tmp in writeFile/writeFileSync args
+    - File must exist:       glob to confirm file path
+    - Must contain pattern:  grep or ast_grep for required content
+    - No unsafe pattern:     ast_grep to confirm absence of forbidden pattern
+  Only mark PASS when ALL mechanically-checkable invariants are verified
+  by tool output (not self-judgment).
+
+- ☐ **R3b: Invariant — self-review (remaining invariants)**
+  For invariants NOT covered by R3a, trace the exact code lines that enforce
+  each one. Reference specific file + line number for each traced invariant.
+  If any invariant is not enforced by the code, fix before passing gate.
 
 Pass → write checkpoint, proceed to next module. Fail → continue TDD loop.
 
