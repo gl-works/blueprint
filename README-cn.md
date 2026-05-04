@@ -1,5 +1,9 @@
 # Blueprint
 
+[English version](README.md)
+
+---
+
 **你说 WHAT，Blueprint 搞定 HOW。**
 
 一个 OpenCode 命令：在你写代码之前自动完成类型定义、接口设计、数据流图、错误协议，然后多 LLM 审查，再按蓝图 TDD 编码。
@@ -112,7 +116,3 @@ cd blueprint/
 | 设计决策多，需要想清楚再写 | 修拼写错误 |
 | 核心路径，需要稳定性 | 快速原型 |
 | 团队协作，需要设计文档 | 单行配置变更 |
-
----
-
-[English version](README.md)

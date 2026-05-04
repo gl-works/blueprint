@@ -1,5 +1,9 @@
 # Blueprint
 
+[中文版](README-cn.md)
+
+---
+
 **You say WHAT. Blueprint handles HOW.**
 
 An OpenCode command that auto-generates types, interfaces, dataflow maps, and error contracts before you write a single line of code — then runs multi-LLM reviews and TDD-codes under those constraints.
@@ -112,7 +116,3 @@ Prerequisites: a `design.md` in the project root.
 | Many design decisions to think through | Typo fix |
 | Critical path, needs stability | Quick prototype |
 | Team collaboration, needs design docs | One-line config change |
-
----
-
-[中文版](README-cn.md)
