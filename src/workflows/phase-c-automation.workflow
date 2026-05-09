@@ -119,18 +119,28 @@ INVARIANTS: from design.md Invariant List
 
 REQUIREMENTS:
 1. One interface/trait per module boundary from design.md.
-2. All function signatures use types from types.md. No inline types.
-3. Each function: name, parameters (with types), return type, description.
-4. No circular dependencies between modules.
-5. Mark new with // NEW. Modified with // MODIFIED.
-6. Distinguish sync vs async.
+2. **Capability Coverage**: Two independent obligations, BOTH must be met:
+   (a) Per module boundary (above): one trait per module.
+   (b) Per external capability in design.md: API endpoints, CLI commands,
+       event handlers, etc. — look for headings containing "API", "CLI",
+       "Command", "Endpoint", "Event", "Handler", "Public Interface".
+       Every capability found must have a corresponding method in at least
+       one trait.
+   Neither (a) nor (b) alone is sufficient. A gap in either is a contracts defect.
+3. All function signatures use types from types.md. No inline types.
+4. Each function: name, parameters (with types), return type, description.
+5. No circular dependencies between modules.
+6. Mark new with // NEW. Modified with // MODIFIED.
+7. Distinguish sync vs async.
 
 SELF-REVIEW:
 - Every parameter type exists in types.md?
 - No circular dependencies?
 - Every interface maps to a design.md module?
+- Every external capability section in design.md has at least one trait method covering it?
 
 AUTO-VERIFICATION: All types in signatures exist in types.md. No circular refs.
+(Note: external capability cross-reference is verified by consistency review after Phase C.)
 
 OUTPUT: .blueprint/$TOPIC/contracts.md
 

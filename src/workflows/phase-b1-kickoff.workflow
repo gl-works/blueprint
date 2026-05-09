@@ -50,6 +50,9 @@ Check `design.md` against this checklist. Each item: YES/NO/PARTIAL.
 - ☐ At least 2 module boundaries identified?
 - ☐ Each module has clear input/output?
 - ☐ Module dependency relationships clear?
+- ☐ **External interfaces**: every external capability (API endpoint / CLI command / event handler / message subscription / ...) has a module assignment in design.md?
+  → Note: this check ensures capabilities are assigned to modules within design.md.
+  → It does NOT replace the downstream contracts.md coverage verification (handled by consistency review).
 
 **Constraint check — tech & language:**
 - ☐ Primary programming language(s) confirmed?

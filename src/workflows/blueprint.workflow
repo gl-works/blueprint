@@ -208,19 +208,21 @@ For each phase below:
    OUTPUT TWO FILES:
    - Details: .blueprint/$TOPIC/reviews/review-security.md (full reasoning)
    - Summary: .blueprint/$TOPIC/reviews/review-security-summary.md
-     ## blocking: true/false
-     ## severity: critical/major/minor
-     ## affects_stage: 1/2/3/4
-     ## finding_count: N
-     ## summary: one-line conclusion
-   "
-   )
+      ## blocking: true/false
+      ## severity: critical/major/minor
+      ## affects_stage: 1/2/3/4
+      ## finding_count: N
+      ## summary: one-line conclusion
+      ## findings:
+        - [concrete description] | [file/module] | [severity]
+    "
+    )
 
-   task(
-     category="ultrabrain",
-     run_in_background=true,
-     load_skills=[],
-     description="Performance review for $TOPIC",
+    task(
+      category="ultrabrain",
+      run_in_background=true,
+      load_skills=[],
+      description="Performance review for $TOPIC",
      prompt="
    You are reviewing a Blueprint design. READ the artifacts.
 
@@ -296,35 +298,60 @@ For each phase below:
    - types.md, contracts.md, lifecycle.md, errors.md
    - reviews/*-summary.md (batch 1)
 
-   Walk through same scenario from THREE personas:
-   - reviewer-junior: 'Can I understand from docs alone?'
-   - reviewer-ops: 'Where are logs? How to debug failures?'
-   - reviewer-user: 'Output file overwritten without warning?'
+    Walk through same scenario from THREE personas:
+    - reviewer-junior: 'Can I understand from docs alone?'
+    - reviewer-ops: 'Where are logs? How to debug failures?'
+    - reviewer-user: 'Output file overwritten without warning?'
 
-   OUTPUT: review-roleplay.md + review-roleplay-summary.md
-   "
-   )
+    Each persona MUST list concrete findings (missing features, unclear documentation, etc.)
+    in its walkthrough section.
 
-   task(
-     category="quick",
-     run_in_background=true,
-     load_skills=[],
-     description="Consistency check for $TOPIC",
-     prompt="
-   MECHANICAL CROSS-FILE CHECK. Read ALL from .blueprint/$TOPIC/.
+    OUTPUT: review-roleplay.md + review-roleplay-summary.md
 
-   CHECKLIST:
-   ☐ lifecycle.md references only types defined in types.md
-   ☐ errors.md covers every error branch in lifecycle.md
-   ☐ contracts.md uses only types from types.md
-   ☐ contracts.md function params have input sources in lifecycle.md
-   ☐ Every type in types.md referenced by >= 1 other artifact
+    Summary format:
+      ## blocking: true/false
+      ## severity: critical/major/minor
+      ## affects_stage: 1/2/3/4
+      ## finding_count: N
+      ## summary: one-line conclusion
+      ## findings:
+        - [concrete description] | [file/module] | [severity] | [persona]
+    "
+    )
 
-   For each FAIL: file, line, description.
+    task(
+      category="quick",
+      run_in_background=true,
+      load_skills=[],
+      description="Consistency check for $TOPIC",
+      prompt="
+    MECHANICAL CROSS-FILE CHECK. Read ALL from .blueprint/$TOPIC/.
 
-   OUTPUT: .blueprint/$TOPIC/reviews/review-consistency.md
-   "
-   )
+    CHECKLIST:
+    ☐ lifecycle.md references only types defined in types.md
+    ☐ errors.md covers every error branch in lifecycle.md
+    ☐ contracts.md uses only types from types.md
+    ☐ contracts.md function params have input sources in lifecycle.md
+    ☐ Every type in types.md referenced by >= 1 other artifact
+    ☐ **design.md capabilities vs contracts.md trait methods**
+       → List external capabilities found in design.md (API endpoints, CLI commands, events, etc.)
+       → For each capability, check if contracts.md has a corresponding trait method
+       → PASS: all N capabilities have matching trait methods
+       → FAIL: [X, Y, Z] capabilities have no matching trait method
+       → Skipped: each skip must list reason (out-of-scope / deferred / non-functional)
+
+    For each FAIL: file, line, description.
+
+    OUTPUT TWO FILES:
+    - Details: .blueprint/$TOPIC/reviews/review-consistency.md
+    - Summary: .blueprint/$TOPIC/reviews/review-consistency-summary.md
+      ## blocking: true/false
+      ## severity: critical/major/minor
+      ## affects_stage: 1/2/3/4
+      ## finding_count: N
+      ## summary: one-line conclusion
+    "
+    )
    ```
 
    Collect both results.
@@ -347,11 +374,17 @@ For each phase below:
    4. Same-level non-blocking → you decide
 
    BLOCKING RULES (automatic):
-   1. Security critical → BLOCKING
-   2. Any review summary has 'blocking: true' → BLOCKING
-   3. Any invariant violation found → BLOCKING
-   4. Circular dependency found → BLOCKING
-   5. Two+ reviewers disagree → only BLOCKING if both flagged blocking
+    1. Security critical → BLOCKING
+    2. Any review summary has 'blocking: true' → BLOCKING
+    3. Any invariant violation found → BLOCKING
+    4. Circular dependency found → BLOCKING
+    5. Two+ reviewers disagree → only BLOCKING if both flagged blocking
+    6. **Consistency check has any FAIL item → BLOCKING**
+       (Read full consistency details if summary indicates failure)
+    7. **Independent Convergence: 2+ independent reviewers flag the same concrete issue → BLOCKING**
+       → Match by same file path / module / capability name from ## findings fields
+       → Roleplay's multiple personas count as independent perspectives
+       → Does NOT apply to vague observations (e.g. "design could be clearer")
 
    OUTPUT: .blueprint/$TOPIC/reviews/final-report.md
 
