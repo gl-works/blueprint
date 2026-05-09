@@ -108,6 +108,16 @@ Prerequisites: a `design.md` in the project root.
 
 ---
 
+## Recommended Model
+
+**DeepSeek V4 Flash** — cheap, powerful, and fast.
+
+Blueprint is developed and tested on **[opencode](https://github.com/opencode-ai/opencode) + oh-my-openagent** with a full-stack DeepSeek V4 Flash configuration.
+
+Recommended for the best plugin experience.
+
+---
+
 ## When to Use
 
 | Good for Blueprint | Skip it |

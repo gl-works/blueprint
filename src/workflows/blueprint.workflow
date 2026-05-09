@@ -5,7 +5,7 @@ This workflow is a DISPATCH layer. It delegates phase execution to sub-agents (o
 - phase-b1-kickoff.workflow  (orchestrator self-executes)
 - phase-b2-finalize.workflow (sub-agent executes)
 - phase-c-automation.workflow (sub-agent executes)
-- phase-d-constraint-coding.workflow (sub-agent executes)
+- phase-d-constraint-coding.workflow (orchestrator self-executes — Pattern B loop)
 </purpose>
 
 <available_agent_types>
@@ -169,26 +169,251 @@ For each phase below:
 **Skip if:** `--from-stage >= 2` OR Phase B2 already done (B1 writes this flag).
 
 1. `cat "$HOME/.config/opencode/command/phase-b2-finalize.workflow"` → save as $CONTENT.
-2. `task(subagent_type="general", load_skills=[], run_in_background=false, prompt="<context>TOPIC: $TOPIC\nBLUEPRINT_DIR: $BLUEPRINT_DIR\n</context>\n" + $CONTENT)`
+2. `task(category="unspecified-high", load_skills=[], run_in_background=false, prompt="<context>TOPIC: $TOPIC\nBLUEPRINT_DIR: $BLUEPRINT_DIR\n</context>\n" + $CONTENT)`
 3. Wait. Verify `.blueprint/$TOPIC/design.md` and `.blueprint/$TOPIC/.meta.json` exist.
 4. Update `.session.md` to mark Phase B complete.
 
-### Phase C: Blueprint Automation (delegate)
+### Phase C: Blueprint Automation (delegate stages) + Reviews (orchestrator level)
 
-**Skip if:** `--from-stage >= 4` OR Phase C already done (`.gate-passed` exists or `.session.md` marks it).
+**Skip if:** `--from-stage >= 4` OR `.gate-passed` exists in `.blueprint/$TOPIC/`.
 
 1. `cat "$HOME/.config/opencode/command/phase-c-automation.workflow"` → save as $CONTENT.
-2. `task(subagent_type="general", load_skills=[], run_in_background=false, prompt="<context>TOPIC: $TOPIC\nBLUEPRINT_DIR: $BLUEPRINT_DIR\nFROM_STAGE: $FROM_STAGE\nDESIGN_ONLY: $DESIGN_ONLY\n</context>\n" + $CONTENT)`
-3. Wait. Verify `.gate-passed` exists (or user accepted BLOCKED).
-4. If `--design-only`: skip Phase D, display "Design-only", exit.
+2. `task(category="deep", load_skills=[], run_in_background=false, prompt="<context>TOPIC: $TOPIC\nBLUEPRINT_DIR: $BLUEPRINT_DIR\nFROM_STAGE: $FROM_STAGE\nDESIGN_ONLY: $DESIGN_ONLY\n</context>\n" + $CONTENT)`
+3. Wait. Verify artifacts exist: types.md, contracts.md, lifecycle.md, errors.md, test-properties.md, test-coverage.md.
+4. If `--design-only`: continue to reviews (reviews still produce .gate-passed). After reviews, Phase D will be skipped.
 
-### Phase D: Constraint Coding (delegate)
+5. **Orchestrator-level multi-perspective reviews:**
+
+   Run after Phase C stages complete. All reviews read from `.blueprint/$TOPIC/` file system, not from orchestrator context.
+
+   **Batch 1 — Run ALL four in parallel:**
+
+   ```
+   task(
+     category="ultrabrain",
+     run_in_background=true,
+     load_skills=[],
+     description="Security review for $TOPIC",
+     prompt="
+   You are reviewing a Blueprint design. DO NOT take their word. READ the artifacts.
+
+   READ: .blueprint/$TOPIC/types.md, .blueprint/$TOPIC/errors.md
+
+   CHECK:
+   1. Sensitive data exposure — secrets, tokens, PII in types?
+   2. Input validation — external inputs validated?
+   3. Information leakage — do error messages leak internals?
+   4. Auth/authorization — mentioned when it should be?
+
+   OUTPUT TWO FILES:
+   - Details: .blueprint/$TOPIC/reviews/review-security.md (full reasoning)
+   - Summary: .blueprint/$TOPIC/reviews/review-security-summary.md
+     ## blocking: true/false
+     ## severity: critical/major/minor
+     ## affects_stage: 1/2/3/4
+     ## finding_count: N
+     ## summary: one-line conclusion
+   "
+   )
+
+   task(
+     category="ultrabrain",
+     run_in_background=true,
+     load_skills=[],
+     description="Performance review for $TOPIC",
+     prompt="
+   You are reviewing a Blueprint design. READ the artifacts.
+
+   READ: .blueprint/$TOPIC/contracts.md, .blueprint/$TOPIC/lifecycle.md
+
+   CHECK:
+   1. Sync blocking in async paths?
+   2. Connection reuse (db/network pooling)?
+   3. Large object passing — unnecessary copying?
+   4. Hot path — unnecessary allocation?
+
+   OUTPUT TWO FILES: review-perf.md + review-perf-summary.md (same summary format)
+   "
+   )
+
+   task(
+     category="ultrabrain",
+     run_in_background=true,
+     load_skills=[],
+     description="Architecture review for $TOPIC",
+     prompt="
+   You are reviewing a Blueprint design. READ the artifacts.
+
+   READ: .blueprint/$TOPIC/contracts.md, .blueprint/$TOPIC/lifecycle.md
+
+   CHECK:
+   1. Circular dependencies?
+   2. Interface abstraction level — right granularity?
+   3. Module cohesion — single responsibility?
+   4. Extensibility — adding feature changes how many modules?
+
+   OUTPUT TWO FILES: review-arch.md + review-arch-summary.md
+   "
+   )
+
+   task(
+     category="deep",
+     run_in_background=true,
+     load_skills=[],
+     description="Business review for $TOPIC",
+     prompt="
+   You are reviewing a Blueprint design. READ the artifacts.
+
+   READ: .blueprint/$TOPIC/design.md, .blueprint/$TOPIC/lifecycle.md
+
+   CHECK:
+   1. Requirements coverage — every scenario has a flow?
+   2. Missing scenarios — obvious user story not covered?
+   3. Error message readability — comprehensible to end users?
+   4. Scope fidelity — nothing beyond what was asked?
+
+   OUTPUT TWO FILES: review-business.md + review-business-summary.md
+   "
+   )
+   ```
+
+   Collect all 4 results. If any failed, retry once.
+
+   Generate batch 1 summary by concatenating all `*-summary.md` content.
+
+   **Batch 2 — Run both in parallel:**
+
+   ```
+   task(
+     category="ultrabrain",
+     run_in_background=true,
+     load_skills=[],
+     description="Roleplay walkthrough for $TOPIC",
+     prompt="
+   You are reviewing by roleplaying personas. READ all artifacts.
+
+   READ from .blueprint/$TOPIC/:
+   - types.md, contracts.md, lifecycle.md, errors.md
+   - reviews/*-summary.md (batch 1)
+
+   Walk through same scenario from THREE personas:
+   - reviewer-junior: 'Can I understand from docs alone?'
+   - reviewer-ops: 'Where are logs? How to debug failures?'
+   - reviewer-user: 'Output file overwritten without warning?'
+
+   OUTPUT: review-roleplay.md + review-roleplay-summary.md
+   "
+   )
+
+   task(
+     category="quick",
+     run_in_background=true,
+     load_skills=[],
+     description="Consistency check for $TOPIC",
+     prompt="
+   MECHANICAL CROSS-FILE CHECK. Read ALL from .blueprint/$TOPIC/.
+
+   CHECKLIST:
+   ☐ lifecycle.md references only types defined in types.md
+   ☐ errors.md covers every error branch in lifecycle.md
+   ☐ contracts.md uses only types from types.md
+   ☐ contracts.md function params have input sources in lifecycle.md
+   ☐ Every type in types.md referenced by >= 1 other artifact
+
+   For each FAIL: file, line, description.
+
+   OUTPUT: .blueprint/$TOPIC/reviews/review-consistency.md
+   "
+   )
+   ```
+
+   Collect both results.
+
+   **Consolidator + Final Report:**
+
+   ```
+   task(
+     category="ultrabrain",
+     load_skills=[],
+     description="Consolidate reviews for $TOPIC",
+     prompt="
+   You are the CONSOLIDATOR. Read ALL review summaries from .blueprint/$TOPIC/reviews/*-summary.md.
+   DO NOT read full review files — summaries only.
+
+   CONFLICT RESOLUTION:
+   1. Security (critical) > any other perspective
+   2. Architecture vs business → architecture wins
+   3. Testability vs performance → testability wins
+   4. Same-level non-blocking → you decide
+
+   BLOCKING RULES (automatic):
+   1. Security critical → BLOCKING
+   2. Any review summary has 'blocking: true' → BLOCKING
+   3. Any invariant violation found → BLOCKING
+   4. Circular dependency found → BLOCKING
+   5. Two+ reviewers disagree → only BLOCKING if both flagged blocking
+
+   OUTPUT: .blueprint/$TOPIC/reviews/final-report.md
+
+   Status: READY FOR CODING | BLOCKED
+
+   Scope:
+     In Scope: [...]
+     Out of Scope: [...]
+     Deferred: [...]
+
+   Artifacts:
+     types.md       ✅ N types
+     contracts.md   ✅ N interfaces
+     lifecycle.md   ✅ N branches, all terminated
+     errors.md     ✅ N error types
+     test-properties.md ✅ N conditions
+     test-coverage.md   ✅ N items
+
+   Reviews:
+     Security      ✅ Pass (0 blocking)
+     Performance   ✅ Pass
+     Architecture  ✅ Pass
+     Business      ⚠️ N minor
+     Roleplay      ✅ Pass
+     Consistency   ✅ Pass
+
+   Decisions:
+     [conflict resolution records]
+
+   Invariant Disputes:
+     I3 | Retained | Kept as-is
+   "
+   )
+   ```
+
+   Wait for consolidator result.
+
+   **Create .gate-passed:**
+   If final report status is "READY FOR CODING" → create `.blueprint/$TOPIC/.gate-passed` (empty file).
+   If "BLOCKED" → do NOT create gate. Warn: "BLOCKED. Fix issues, re-run with --from-stage=4."
+
+   **Display review summary:**
+   ```
+   ┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+   ┃  BLUEPRINT COMPLETE :: $TOPIC
+   ┃  Status: READY FOR CODING
+   ┃  Artifacts: 6 files, N reviews
+   ┃  Gate: .gate-passed created
+   ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+   ```
+
+6. If `--design-only`: skip Phase D, display "Design-only — Phase D skipped."
+
+### Phase D: Constraint Coding (orchestrator-level Pattern B loop)
 
 **Skip if:** `--design-only` is set.
 
-1. `cat "$HOME/.config/opencode/command/phase-d-constraint-coding.workflow"` → save as $CONTENT.
-2. `task(subagent_type="general", load_skills=[], run_in_background=false, prompt="<context>TOPIC: $TOPIC\nBLUEPRINT_DIR: $BLUEPRINT_DIR\nFROM_STAGE: $FROM_STAGE\n</context>\n" + $CONTENT)`
-3. Wait. Verify all exit gates passed.
+Phase D is self-executed by the orchestrator (not delegated). Read the workflow file and follow the Pattern B instructions.
+
+1. `cat "$HOME/.config/opencode/command/phase-d-constraint-coding.workflow"` → save as instructions.
+2. Follow those instructions as your own — Wave 0 scaffold, per-module loop with retry and verification gates.
+3. All modules complete → update `.session.md` and display final banner.
 
 ### Completion
 

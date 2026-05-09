@@ -108,6 +108,16 @@ cd blueprint/
 
 ---
 
+## 推荐模型
+
+**DeepSeek V4 Flash** — 便宜、强大、还很快。
+
+Blueprint 的开发和测试基于 **[opencode](https://github.com/opencode-ai/opencode) + oh-my-openagent**，全栈配置 DeepSeek V4 Flash。
+
+推荐使用 DeepSeek V4 Flash 以获得最佳插件工作效果。
+
+---
+
 ## 什么时候用？
 
 | 适合 Blueprint | 不需要 |

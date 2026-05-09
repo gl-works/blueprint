@@ -4,17 +4,10 @@
 > #2: NO NEW TYPE OUTSIDE .blueprint/<topic>/types.md — enforced by Stage 1 gate
 > #3: NO NEW INTERFACE WITHOUT .blueprint/<topic>/contracts.md SPEC — enforced by Stage 2 gate
 
-**Available agent types for task() calls in this phase:**
-- oracle — Read-only high-IQ reasoning consultant. Use for architecture/debugging decisions.
-- explore — Contextual grep for codebase searches.
-- librarian — External reference search (docs, OSS examples).
-
-**Task category mapping:**
-- quick — Pure mechanical matching (cross-file consistency checks)
-- deep — Depth analysis: type derivation, module contracts, lifecycle, error protocols, test property generation, business review
-- ultrabrain — Multi-perspective judgment: security/perf/arch reviews, roleplay walkthrough, consolidator
-
 **Context variables available:** TOPIC, BLUEPRINT_DIR, FROM_STAGE, DESIGN_ONLY
+
+> This phase runs as a delegated sub-agent. Stages are executed inline (no nested sub-agents).
+> Reviews have been moved to orchestrator level — they run after this sub-agent completes.
 
 ---
 
@@ -39,19 +32,12 @@
 ### Stage 1: Data Blueprint → types.md
 
 **Input:** design.md + invariant list
-**Category:** `deep`
 
 **Step 1.1: Invariant feasibility check**
 Check invariants affecting type decisions. Report if any may be infeasible.
 
-**Step 1.2: Execute subagent**
+**Step 1.2: Generate types.md**
 
-```
-task(
-  category="deep",
-  load_skills=[],
-  description="Generate types.md for $TOPIC",
-  prompt="
 TASK: Produce types.md — all core data types for the $TOPIC feature in one file.
 
 INPUT (design.md):
@@ -80,11 +66,8 @@ SELF-REVIEW:
 OUTPUT: .blueprint/$TOPIC/types.md
 
 AUTO-VERIFICATION: No duplicate type definitions. Every referenced type exists.
-"
-)
-```
 
-Wait for result. Verify `.blueprint/$TOPIC/types.md` exists and has content.
+Write `.blueprint/$TOPIC/types.md` and verify it exists and has content.
 
 **Step 1.3: Stage gate**
 Self-review (match entities). Auto-verify: no duplicate types in file.
@@ -96,12 +79,7 @@ Self-review (match entities). Auto-verify: no duplicate types in file.
 ```
 
 **Step 1.5: Trigger 工序 A (test property generation)**
-```
-task(
-  category="deep",
-  load_skills=[],
-  description="Generate test-properties.md for $TOPIC",
-  prompt="
+
 TASK: From types.md, reverse-infer boundary conditions. Write as checkbox list with P0/P1/P2.
 
 INPUT: Read .blueprint/$TOPIC/types.md
@@ -119,28 +97,20 @@ PRIORITY:
 - P2: Concurrency, resource exhaustion, rare paths. NICE to test.
 
 OUTPUT: .blueprint/$TOPIC/test-properties.md
-"
-)
-```
+
+Write `.blueprint/$TOPIC/test-properties.md` and verify it exists.
 
 ### Stage 2: Module Contracts → contracts.md
 
 **Input:** design.md + types.md + invariants
-**Category:** `deep`
 
 **Step 2.0: Dependency check**
 If `.blueprint/$TOPIC/types.md` missing → abort: "Stage 2 depends on Stage 1."
 
 **Step 2.1: Invariant feasibility check**
 
-**Step 2.2: Execute subagent**
+**Step 2.2: Generate contracts.md**
 
-```
-task(
-  category="deep",
-  load_skills=[],
-  description="Generate contracts.md for $TOPIC",
-  prompt="
 TASK: Define module boundaries and interface signatures for the $TOPIC feature.
 
 INPUT: Read design.md from .blueprint/$TOPIC/design.md
@@ -163,9 +133,8 @@ SELF-REVIEW:
 AUTO-VERIFICATION: All types in signatures exist in types.md. No circular refs.
 
 OUTPUT: .blueprint/$TOPIC/contracts.md
-"
-)
-```
+
+Write `.blueprint/$TOPIC/contracts.md` and verify it exists.
 
 **Step 2.3: Stage gate**
 Self-review + auto-verification.
@@ -180,21 +149,14 @@ Self-review + auto-verification.
 ### Stage 3: Lifecycle Map → lifecycle.md
 
 **Input:** design.md + contracts.md + types.md + invariants
-**Category:** `deep`
 
 **Step 3.0: Dependency check**
 Requires types.md AND contracts.md.
 
 **Step 3.1: Invariant feasibility check**
 
-**Step 3.2: Execute subagent**
+**Step 3.2: Generate lifecycle.md**
 
-```
-task(
-  category="deep",
-  load_skills=[],
-  description="Generate lifecycle.md for $TOPIC",
-  prompt="
 TASK: Draw core data flow for $TOPIC, including ALL branch points.
 
 INPUT: Read design.md, contracts.md, types.md from .blueprint/$TOPIC/
@@ -213,9 +175,8 @@ SELF-REVIEW:
 AUTO-VERIFICATION: Every branch point should have corresponding error rule (checked in Stage 4).
 
 OUTPUT: .blueprint/$TOPIC/lifecycle.md
-"
-)
-```
+
+Write `.blueprint/$TOPIC/lifecycle.md` and verify it exists.
 
 **Step 3.3: Stage gate**
 
@@ -229,12 +190,6 @@ OUTPUT: .blueprint/$TOPIC/lifecycle.md
 
 **Step 3.5: Trigger 工序 B (test coverage matrix)**
 
-```
-task(
-  category="deep",
-  load_skills=[],
-  description="Generate test-coverage.md for $TOPIC",
-  prompt="
 TASK: From lifecycle.md, enumerate ALL branch paths as test coverage checklist.
 
 INPUT: Read .blueprint/$TOPIC/lifecycle.md
@@ -251,14 +206,12 @@ FORMAT (test-coverage.md):
 - [ ] P2: <rare scenario>
 
 OUTPUT: .blueprint/$TOPIC/test-coverage.md
-"
-)
-```
+
+Write `.blueprint/$TOPIC/test-coverage.md` and verify it exists.
 
 ### Stage 4: Error Contract → errors.md
 
 **Input:** lifecycle.md + types.md + invariants
-**Category:** `deep`
 
 **Step 4.0: Dependency check**
 Requires types.md AND lifecycle.md.
@@ -266,14 +219,8 @@ Requires types.md AND lifecycle.md.
 **Step 4.1: Invariant feasibility check**
 Error-related invariants are especially likely to be infeasible (e.g., "all errors bilingual"). Pay extra attention.
 
-**Step 4.2: Execute subagent**
+**Step 4.2: Generate errors.md**
 
-```
-task(
-  category="deep",
-  load_skills=[],
-  description="Generate errors.md for $TOPIC",
-  prompt="
 TASK: Define error types, propagation rules, retry policies, and user-facing messages.
 
 INPUT: Read lifecycle.md and types.md from .blueprint/$TOPIC/
@@ -293,9 +240,8 @@ AUTO-VERIFICATION: Every error branch in lifecycle.md has matching rule in error
 Error types exist in types.md or existing codebase.
 
 OUTPUT: .blueprint/$TOPIC/errors.md
-"
-)
-```
+
+Write `.blueprint/$TOPIC/errors.md` and verify it exists.
 
 **Step 4.3: Stage gate**
 
@@ -313,248 +259,5 @@ OUTPUT: .blueprint/$TOPIC/errors.md
 Display:
 ```
 ◆ Phase C artifacts complete (4/4 stages + 2 procedures)
-◆ Starting multi-perspective reviews...
-```
-
-### Phase C — Multi-Perspective Parallel Reviews
-
-**Batch 1 — Run ALL four in parallel:**
-
-```
-task(
-  category="ultrabrain",
-  run_in_background=true,
-  load_skills=[],
-  description="Security review for $TOPIC",
-  prompt="
-You are reviewing a Blueprint design. DO NOT take their word. READ the artifacts.
-
-READ: .blueprint/$TOPIC/types.md, .blueprint/$TOPIC/errors.md
-
-CHECK:
-1. Sensitive data exposure — secrets, tokens, PII in types?
-2. Input validation — external inputs validated?
-3. Information leakage — do error messages leak internals?
-4. Auth/authorization — mentioned when it should be?
-
-OUTPUT TWO FILES:
-- Details: .blueprint/$TOPIC/reviews/review-security.md (full reasoning)
-- Summary: .blueprint/$TOPIC/reviews/review-security-summary.md
-  ## blocking: true/false
-  ## severity: critical/major/minor
-  ## affects_stage: 1/2/3/4
-  ## finding_count: N
-  ## summary: one-line conclusion
-"
-)
-
-task(
-  category="ultrabrain",
-  run_in_background=true,
-  load_skills=[],
-  description="Performance review for $TOPIC",
-  prompt="
-You are reviewing a Blueprint design. READ the artifacts.
-
-READ: .blueprint/$TOPIC/contracts.md, .blueprint/$TOPIC/lifecycle.md
-
-CHECK:
-1. Sync blocking in async paths?
-2. Connection reuse (db/network pooling)?
-3. Large object passing — unnecessary copying?
-4. Hot path — unnecessary allocation?
-
-OUTPUT TWO FILES: review-perf.md + review-perf-summary.md (same summary format)
-"
-)
-
-task(
-  category="ultrabrain",
-  run_in_background=true,
-  load_skills=[],
-  description="Architecture review for $TOPIC",
-  prompt="
-You are reviewing a Blueprint design. READ the artifacts.
-
-READ: .blueprint/$TOPIC/contracts.md, .blueprint/$TOPIC/lifecycle.md
-
-CHECK:
-1. Circular dependencies?
-2. Interface abstraction level — right granularity?
-3. Module cohesion — single responsibility?
-4. Extensibility — adding feature changes how many modules?
-
-OUTPUT TWO FILES: review-arch.md + review-arch-summary.md
-"
-)
-
-task(
-  category="deep",
-  run_in_background=true,
-  load_skills=[],
-  description="Business review for $TOPIC",
-  prompt="
-You are reviewing a Blueprint design. READ the artifacts.
-
-READ: .blueprint/$TOPIC/design.md, .blueprint/$TOPIC/lifecycle.md
-
-CHECK:
-1. Requirements coverage — every scenario has a flow?
-2. Missing scenarios — obvious user story not covered?
-3. Error message readability — comprehensible to end users?
-4. Scope fidelity — nothing beyond what was asked?
-
-OUTPUT TWO FILES: review-business.md + review-business-summary.md
-"
-)
-```
-
-Collect all 4 results. If any failed, retry once.
-
-Generate batch 1 summary by concatenating all `*-summary.md` content.
-
-**Batch 2 — Run both in parallel:**
-
-```
-task(
-  category="ultrabrain",
-  run_in_background=true,
-  load_skills=[],
-  description="Roleplay walkthrough for $TOPIC",
-  prompt="
-You are reviewing by roleplaying personas. READ all artifacts.
-
-READ from .blueprint/$TOPIC/:
-- types.md, contracts.md, lifecycle.md, errors.md
-- reviews/*-summary.md (batch 1)
-
-Walk through same scenario from THREE personas:
-- reviewer-junior: 'Can I understand from docs alone?'
-- reviewer-ops: 'Where are logs? How to debug failures?'
-- reviewer-user: 'Output file overwritten without warning?'
-
-OUTPUT: review-roleplay.md + review-roleplay-summary.md
-"
-)
-
-task(
-  category="quick",
-  run_in_background=true,
-  load_skills=[],
-  description="Consistency check for $TOPIC",
-  prompt="
-MECHANICAL CROSS-FILE CHECK. Read ALL from .blueprint/$TOPIC/.
-
-CHECKLIST:
-☐ lifecycle.md references only types defined in types.md
-☐ errors.md covers every error branch in lifecycle.md
-☐ contracts.md uses only types from types.md
-☐ contracts.md function params have input sources in lifecycle.md
-☐ Every type in types.md referenced by >= 1 other artifact
-
-For each FAIL: file, line, description.
-
-OUTPUT: .blueprint/$TOPIC/reviews/review-consistency.md
-"
-)
-```
-
-Collect both results.
-
-### Phase C — Consolidator + Final Report
-
-**Execute consolidator:**
-
-```
-task(
-  category="ultrabrain",
-  load_skills=[],
-  description="Consolidate reviews for $TOPIC",
-  prompt="
-You are the CONSOLIDATOR. Read ALL review summaries from .blueprint/$TOPIC/reviews/*-summary.md.
-DO NOT read full review files — summaries only.
-
-CONFLICT RESOLUTION:
-1. Security (critical) > any other perspective
-2. Architecture vs business → architecture wins
-3. Testability vs performance → testability wins
-4. Same-level non-blocking → you decide
-
-BLOCKING RULES (automatic):
-1. Security critical → BLOCKING
-2. Any review summary has `blocking: true` → BLOCKING
-3. Any invariant violation found → BLOCKING
-4. Circular dependency found → BLOCKING
-5. Two+ reviewers disagree → only BLOCKING if both flagged blocking
-
-OUTPUT: .blueprint/$TOPIC/reviews/final-report.md
-
-Status: READY FOR CODING | BLOCKED
-
-Scope:
-  In Scope: [...]
-  Out of Scope: [...]
-  Deferred: [...]
-
-Artifacts:
-  types.md       ✅ N types
-  contracts.md   ✅ N interfaces
-  lifecycle.md   ✅ N branches, all terminated
-  errors.md     ✅ N error types
-  test-properties.md ✅ N conditions
-  test-coverage.md   ✅ N items
-
-Reviews:
-  Security      ✅ Pass (0 blocking)
-  Performance   ✅ Pass
-  Architecture  ✅ Pass
-  Business      ⚠️ N minor
-  Roleplay      ✅ Pass
-  Consistency   ✅ Pass
-
-Decisions:
-  [conflict resolution records]
-
-Invariant Disputes:
-  I3 | Retained | Kept as-is
-"
-)
-```
-
-Wait for consolidator result.
-
-**Create .gate-passed:**
-If final report status is "READY FOR CODING" → create `.blueprint/$TOPIC/.gate-passed` (empty file).
-If "BLOCKED" → do NOT create gate. Warn: "BLOCKED. Fix issues, re-run with --from-stage=4."
-
-**Display final summary:**
-```
-┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
-┃  BLUEPRINT COMPLETE :: $TOPIC
-┃  Status: READY FOR CODING
-┃  Artifacts: 6 files, N reviews
-┃  Gate: .gate-passed created
-┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
-```
-
-**If `$DESIGN_ONLY=true`:** workflow ends here. Display "Design-only — Phase D skipped."
-
-**Update .session.md:**
-```markdown
-## Progress
-- stage: Phase C (Complete)
-- status: completed
-## Completed
-- [x] Phase B: Kickoff
-- [x] Stage 1: Data Blueprint
-- [x] 工序 A: Test Properties
-- [x] Stage 2: Module Contracts
-- [x] Stage 3: Lifecycle Map
-- [x] 工序 B: Test Coverage
-- [x] Stage 4: Error Contract
-- [x] Reviews (Batch 1 + Batch 2)
-- [x] Consolidator + Final Report
-- [ ] Phase D: Constraint Coding
-## Gate
-- gate-passed: ✓
+◆ Phase C stages done — orchestrator will run multi-perspective reviews next.
 ```
