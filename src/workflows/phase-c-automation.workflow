@@ -46,7 +46,12 @@ INPUT (design.md):
 INVARIANTS:
 --- confirmed invariant list ---
 
-FORMAT: Use the project's language syntax (from existing code) or language-agnostic.
+FORMAT: Use the target language's syntax exactly (infer from existing code or design.md decisions).
+  - Rust: struct / enum / trait / impl
+  - TypeScript: interface / type / union / enum
+  - Python: class / dataclass / Enum / Protocol
+  - Go: struct / interface
+  - Fallback: language-agnostic pseudocode with language name in comment
 Mark new with '// NEW'. Modified with '// MODIFIED' + old→new.
 
 REQUIREMENTS:
@@ -132,6 +137,8 @@ REQUIREMENTS:
 5. No circular dependencies between modules.
 6. Mark new with // NEW. Modified with // MODIFIED.
 7. Distinguish sync vs async.
+8. Use the target language's interface syntax (infer from types.md or existing code).
+   Fallback (unknown language): pseudocode with `interface` keyword.
 
 SELF-REVIEW:
 - Every parameter type exists in types.md?

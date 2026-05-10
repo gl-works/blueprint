@@ -72,6 +72,12 @@ Check `design.md` against this checklist. Each item: YES/NO/PARTIAL.
 - ☐ Has invariant declaring what NOT to do (scope boundary)?
 - ☐ Any "reverse" invariants? (e.g., "no new dependencies")
 
+**Orchestration check:**
+- ☐ Cross-module side effects identified?
+   When module A writes data, does module B need to know? (e.g., create → cache invalidation, state change → notification)
+- ☐ Behavior chain complete for each external capability?
+   From entry point (API request / CLI command) to terminal state — which modules and operations are involved?
+
 **Alternatives check:** (Rule 2: State Rejected Alternatives)
 - ☐ For each design choice where ≥2 reasonable approaches exist, are rejected alternatives stated with reasoning?
 - ☐ If alternatives are missing, can you identify at least one design choice where the decision wasn't obvious?
