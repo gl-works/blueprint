@@ -363,6 +363,16 @@ For each phase below:
        → FAIL: [X, Y, Z] capabilities have no matching trait method
        → Skipped: each skip must list reason (out-of-scope / deferred / non-functional)
 
+    REVERSE TRACEABILITY:
+    ☐ **trait methods → lifecycle paths**
+       → For each method in contracts.md (grouped by trait), check if it appears in ≥1 lifecycle.md path
+       → PASS: all N methods have a matching lifecycle path
+       → FAIL: list each MISSING method (trait.method_name)
+    ☐ **enum variants → lifecycle handling**
+       → For each enum in types.md, list ALL variants. Check each variant appears in ≥1 lifecycle.md branch.
+       → PASS: all N variants covered by lifecycle paths
+       → FAIL: list each UNCOVERED variant (EnumName::Variant)
+
     For each FAIL: file, line, description.
 
     OUTPUT TWO FILES:
@@ -413,22 +423,27 @@ For each phase below:
 
    OUTPUT: .blueprint/$TOPIC/reviews/final-report.md
 
-   Status: READY FOR CODING | BLOCKED
+    Status: READY FOR CODING | BLOCKED
 
-   Scope:
-     In Scope: [...]
-     Out of Scope: [...]
-     Deferred: [...]
+    Implementation Risk:
+      - Wiring coverage: <N> / <M> contract methods have explicit "calls" annotation (N/A if no annotations)
+      - Unreferenced variants: [enum variants not appearing in any lifecycle path, or "none"]
+      - Gap: <summary of known integration risks>
 
-   Artifacts:
-     types.md       ✅ N types
-     contracts.md   ✅ N interfaces
-     lifecycle.md   ✅ N branches, all terminated
-     errors.md     ✅ N error types
-     test-properties.md ✅ N conditions
-     test-coverage.md   ✅ N items
+    Scope:
+      In Scope: [...]
+      Out of Scope: [...]
+      Deferred: [...]
 
-   Reviews:
+    Artifacts:
+      types.md       ✅ N types
+      contracts.md   ✅ N interfaces
+      lifecycle.md   ✅ N branches, all terminated
+      errors.md     ✅ N error types
+      test-properties.md ✅ N conditions
+      test-coverage.md   ✅ N items
+
+    Reviews:
      Security      ✅ Pass (0 blocking)
      Performance   ✅ Pass
      Architecture  ✅ Pass
