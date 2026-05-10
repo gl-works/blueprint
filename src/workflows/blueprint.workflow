@@ -130,7 +130,7 @@ If `.session.md` does not exist (fresh start), write:
 
 ### Step 3: Find design.md
 
-Search order (first match wins):
+Search order (first match wins, case-insensitive):
 1. `design.md` in project root
 2. `$TOPIC.md` in project root
 3. `.blueprint/$TOPIC/design.md` (if resuming)
@@ -195,15 +195,20 @@ For each phase below:
      load_skills=[],
      description="Security review for $TOPIC",
      prompt="
-   You are reviewing a Blueprint design. DO NOT take their word. READ the artifacts.
+    You are reviewing a Blueprint design. DO NOT take their word. READ the artifacts.
 
    READ: .blueprint/$TOPIC/types.md, .blueprint/$TOPIC/errors.md
+         .blueprint/$TOPIC/design.md (Decisions Record + Invariant List)
 
    CHECK:
    1. Sensitive data exposure — secrets, tokens, PII in types?
    2. Input validation — external inputs validated?
    3. Information leakage — do error messages leak internals?
    4. Auth/authorization — mentioned when it should be?
+
+   SCOPE NOTE: cross-reference findings with design.md's Decisions Record and
+   Invariant List. Explicitly out-of-scope / accepted-risk / deferred items →
+   flag as minor at most, never BLOCKING.
 
    OUTPUT TWO FILES:
    - Details: .blueprint/$TOPIC/reviews/review-security.md (full reasoning)
@@ -224,9 +229,10 @@ For each phase below:
       load_skills=[],
       description="Performance review for $TOPIC",
      prompt="
-   You are reviewing a Blueprint design. READ the artifacts.
+    You are reviewing a Blueprint design. READ the artifacts.
 
    READ: .blueprint/$TOPIC/contracts.md, .blueprint/$TOPIC/lifecycle.md
+         .blueprint/$TOPIC/design.md (Decisions Record + Invariant List)
 
    CHECK:
    1. Sync blocking in async paths?
@@ -234,19 +240,24 @@ For each phase below:
    3. Large object passing — unnecessary copying?
    4. Hot path — unnecessary allocation?
 
-   OUTPUT TWO FILES: review-perf.md + review-perf-summary.md (same summary format)
-   "
-   )
+   SCOPE NOTE: cross-reference findings with design.md's Decisions Record and
+   Invariant List. Explicitly out-of-scope / accepted-risk / deferred items →
+   flag as minor at most, never BLOCKING.
 
-   task(
-     category="ultrabrain",
-     run_in_background=true,
-     load_skills=[],
-     description="Architecture review for $TOPIC",
-     prompt="
-   You are reviewing a Blueprint design. READ the artifacts.
+   OUTPUT TWO FILES: review-perf.md + review-perf-summary.md (same summary format)
+    "
+    )
+
+    task(
+      category="ultrabrain",
+      run_in_background=true,
+      load_skills=[],
+      description="Architecture review for $TOPIC",
+      prompt="
+    You are reviewing a Blueprint design. READ the artifacts.
 
    READ: .blueprint/$TOPIC/contracts.md, .blueprint/$TOPIC/lifecycle.md
+         .blueprint/$TOPIC/design.md (Decisions Record + Invariant List)
 
    CHECK:
    1. Circular dependencies?
@@ -254,17 +265,21 @@ For each phase below:
    3. Module cohesion — single responsibility?
    4. Extensibility — adding feature changes how many modules?
 
-   OUTPUT TWO FILES: review-arch.md + review-arch-summary.md
-   "
-   )
+   SCOPE NOTE: cross-reference findings with design.md's Decisions Record and
+   Invariant List. Explicitly out-of-scope / accepted-risk / deferred items →
+   flag as minor at most, never BLOCKING.
 
-   task(
-     category="deep",
-     run_in_background=true,
-     load_skills=[],
-     description="Business review for $TOPIC",
-     prompt="
-   You are reviewing a Blueprint design. READ the artifacts.
+   OUTPUT TWO FILES: review-arch.md + review-arch-summary.md
+    "
+    )
+
+    task(
+      category="deep",
+      run_in_background=true,
+      load_skills=[],
+      description="Business review for $TOPIC",
+      prompt="
+    You are reviewing a Blueprint design. READ the artifacts.
 
    READ: .blueprint/$TOPIC/design.md, .blueprint/$TOPIC/lifecycle.md
 
@@ -274,8 +289,12 @@ For each phase below:
    3. Error message readability — comprehensible to end users?
    4. Scope fidelity — nothing beyond what was asked?
 
+   SCOPE NOTE: cross-reference findings with design.md's Decisions Record and
+   Invariant List. Explicitly out-of-scope / accepted-risk / deferred items →
+   flag as minor at most, never BLOCKING.
+
    OUTPUT TWO FILES: review-business.md + review-business-summary.md
-   "
+    "
    )
    ```
 
@@ -305,6 +324,10 @@ For each phase below:
 
     Each persona MUST list concrete findings (missing features, unclear documentation, etc.)
     in its walkthrough section.
+
+    SCOPE NOTE: cross-reference findings with design.md's Decisions Record and
+    Invariant List. Explicitly out-of-scope / accepted-risk / deferred items →
+    flag as minor at most, never BLOCKING.
 
     OUTPUT: review-roleplay.md + review-roleplay-summary.md
 
@@ -350,6 +373,8 @@ For each phase below:
       ## affects_stage: 1/2/3/4
       ## finding_count: N
       ## summary: one-line conclusion
+      ## findings:
+        - [concrete description] | [file/module] | [severity]
     "
     )
    ```
@@ -365,7 +390,7 @@ For each phase below:
      description="Consolidate reviews for $TOPIC",
      prompt="
    You are the CONSOLIDATOR. Read ALL review summaries from .blueprint/$TOPIC/reviews/*-summary.md.
-   DO NOT read full review files — summaries only.
+   DO NOT read full review files — unless a summary indicates failure (see BLOCKING RULES 6/7 for exceptions).
 
    CONFLICT RESOLUTION:
    1. Security (critical) > any other perspective
@@ -378,7 +403,7 @@ For each phase below:
     2. Any review summary has 'blocking: true' → BLOCKING
     3. Any invariant violation found → BLOCKING
     4. Circular dependency found → BLOCKING
-    5. Two+ reviewers disagree → only BLOCKING if both flagged blocking
+    5. Two+ reviewers agree on blocking → BLOCKING. Disagreement on blocking status → non-blocking unless any flagged as critical.
     6. **Consistency check has any FAIL item → BLOCKING**
        (Read full consistency details if summary indicates failure)
     7. **Independent Convergence: 2+ independent reviewers flag the same concrete issue → BLOCKING**
@@ -424,9 +449,10 @@ For each phase below:
 
    **Create .gate-passed:**
    If final report status is "READY FOR CODING" → create `.blueprint/$TOPIC/.gate-passed` (empty file).
-   If "BLOCKED" → do NOT create gate. Warn: "BLOCKED. Fix issues, re-run with --from-stage=4."
+   If "BLOCKED" → do NOT create gate.
 
    **Display review summary:**
+   If READY FOR CODING:
    ```
    ┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
    ┃  BLUEPRINT COMPLETE :: $TOPIC
@@ -435,6 +461,49 @@ For each phase below:
    ┃  Gate: .gate-passed created
    ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
    ```
+   If BLOCKED:
+   ```
+   ┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+   ┃  BLUEPRINT COMPLETE :: $TOPIC
+   ┃  Status: ❌ BLOCKED
+   ┃  Artifacts: 6 files, N reviews
+   ┃  Gate: ✗ NOT created
+   ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+   ```
+
+   **Post-pipeline BLOCKED resolution** (only if BLOCKED):
+   The pipeline is complete. Phase D was skipped due to blocking findings.
+   You can help the user resolve these findings interactively:
+
+   1. Read the blocking findings from `.blueprint/$TOPIC/reviews/final-report.md`.
+   2. Create a `todowrite` list with one todo per blocking finding.
+   3. For each finding (user chooses order):
+      a. Present the finding text to the user.
+      b. **Before any edits**: ask "What's the acceptance criteria for this fix?" Converge scope first.
+      c. Discuss and fix using edit/write tools on `.blueprint/$TOPIC/` artifact files.
+         For architecturally-complex findings (≥2 valid approaches, multi-file, open-ended):
+         → delegate to `task(category="deep")` to keep context lean.
+         For simple/mechanical findings (one-line, obvious fix):
+         → apply inline.
+      d. After each todo is complete, **announce the next uncompleted item** from the list.
+         Ask: "Next up: [finding N]. Continue or skip?"
+    4. When ALL todos completed:
+       Display:
+       ```
+       ┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+       ┃  ✅ All blocking issues resolved.                           ┃
+       ┃  All artifact files are now ready for re-validation.        ┃
+       ┃                                                             ┃
+       ┃  Next step:                                                 ┃
+       ┃    /blueprint --from-stage 4 $TOPIC                         ┃
+       ┃                                                             ┃
+       ┃  (Include any extra flags from original command,             ┃
+       ┃   e.g. --design-only, custom design.md path, etc.)          ┃
+       ┃                                                             ┃
+       ┃  This re-runs Stage 4 + all reviews to verify the fixes,    ┃
+       ┃  then proceeds to Phase D (coding) if the gate passes.      ┃
+       ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+       ```
 
 6. If `--design-only`: skip Phase D, display "Design-only — Phase D skipped."
 

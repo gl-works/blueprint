@@ -161,10 +161,18 @@ BLUEPRINT CONSTRAINTS:
 - Errors from errors.md only — follow error rules (retry policy, user messages).
 - **DO NOT** modify the shared interface file (traits.rs / .d.ts / abstract base).
 
+IMPLEMENTATION INTEGRITY (verify in order before finalizing):
+1. Resource: for every .open()/.lock()/.acquire(), find matching .close()/.unlock()/.release() on ALL paths.
+2. Concurrency: if using ≥2 locks, document acquisition order — is it globally consistent?
+3. Bounds: every queue/buffer/collection — what happens at capacity?
+4. Atomicity: if multi-step operation fails mid-way, is partial state isolated from other callers?
+
 OUTPUT:
 - Module implementation files.
 - Test files covering all P0 boundary conditions for this module.
 - All tests pass with \$TEST_CMD.
+- Each non-trivial module source file ends with a `// INTEGRITY:` comment block
+  documenting the 4 integrity checks above.
 "
   )
 
@@ -205,6 +213,12 @@ OUTPUT:
   → Changes detected → Review diff:
     - Reasonable (contract fix) → commit update.
     - Violates contracts → revert, retry_count += 1; continue
+
+  # Advisory: INTEGRITY NOTE CHECK (non-blocking)
+  Run: grep -r "INTEGRITY:" <module source directory> 2>/dev/null || true
+  → Found → silently pass.
+  → Not found → warn: "Module <name> missing // INTEGRITY: comment block in source files.
+     Consider adding one to document resource/concurrency/bounds/atomicity checks."
 
   # ── All gates passed ──
   break  # Module complete

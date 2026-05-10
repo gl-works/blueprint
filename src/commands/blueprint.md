@@ -50,6 +50,6 @@ All context files are resolved inside the workflow.
 </context>
 
 <process>
-Execute the blueprint workflow from @.blueprint.workflow end-to-end.
+Execute the blueprint workflow end-to-end.
 Preserve all gates: invariant feasibility checks, stage dependencies, review consolidation, .gate-passed creation, module exit gates.
 </process>
